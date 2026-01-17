@@ -13,7 +13,6 @@ ai-skills-hub/
 │   └── commands/           # CLI 命令實作
 │       ├── sync.ts          # 同步命令
 │       └── check.ts         # 檢查命令
-├── scripts/                # --- 自動化腳本 (已移除，改用 CLI) ---
 ├── dist/                   # [忽略] 編譯後的 JS (實際執行碼)
 ├── package.json            # 專案依賴和腳本定義
 ├── tsconfig.json           # TypeScript 配置

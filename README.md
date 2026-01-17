@@ -18,7 +18,6 @@ ai-skills-hub/
 │   └── commands/           # CLI command implementations
 │       ├── sync.ts          # Sync command
 │       └── check.ts         # Check command
-├── scripts/                # --- Automation Scripts (removed, using CLI instead) ---
 ├── dist/                   # [Ignore] Compiled JS (actual execution code)
 ├── package.json            # Project dependencies and script definitions
 ├── tsconfig.json           # TypeScript configuration
