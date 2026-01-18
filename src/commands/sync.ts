@@ -67,10 +67,8 @@ export async function syncCommand(options: SyncOptions) {
         throw new Error('dist directory not found. npm package may be incomplete.');
       }
       
-      // Verify skills directory exists
-      if (!existsSync(join(PROJECT_DIR, 'skills'))) {
-        throw new Error('skills directory not found. npm package may be incomplete.');
-      }
+      // Note: skills directory is managed in user's home directory (~/.ai-skills-hub/skills)
+      // It is not required in the npm package itself
     }
 
     // 3. Detect operating system
