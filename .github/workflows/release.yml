@@ -50,9 +50,10 @@ jobs:
         run: npm run build
 
       - name: Publish to npm
-        run: npm publish --provenance
+        run: npm publish --provenance --access public
         # Using Trusted Publishing (OIDC) - no NPM_TOKEN needed
         # OIDC authentication is automatically handled by setup-node@v4
+        # --access public is required for scoped packages or first-time publishing
 
       - name: Push changes and tags
         run: |
