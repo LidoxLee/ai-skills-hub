@@ -27,6 +27,21 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+          # Use NPM_TOKEN if available (recommended for first-time publishing)
+          # Otherwise, use OIDC authentication
+          scope: ''
+
+      - name: Configure npm authentication (if NPM_TOKEN exists)
+        run: |
+          set +x  # Disable command echoing to prevent token exposure
+          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "✅ Using NPM_TOKEN for authentication"
+            echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
+          else
+            echo "ℹ️  NPM_TOKEN not found, will use OIDC authentication"
+          fi
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Install dependencies
         run: npm ci
@@ -50,10 +65,20 @@ jobs:
         run: npm run build
 
       - name: Publish to npm
-        run: npm publish --provenance --access public
-        # Using Trusted Publishing (OIDC) - no NPM_TOKEN needed
-        # OIDC authentication is automatically handled by setup-node@v4
+        run: |
+          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
+            echo "ℹ️  Using OIDC authentication (requires npm account OIDC setup)"
+            echo "If this fails, add NPM_TOKEN secret to repository settings"
+            npm publish --provenance --access public
+          else
+            echo "ℹ️  Using NPM_TOKEN for authentication"
+            npm publish --access public
+          fi
+        # Authentication methods (in order of preference):
+        # 1. NPM_TOKEN secret (recommended for first-time publishing)
+        # 2. OIDC via setup-node@v4 (requires npm account OIDC setup)
         # --access public is required for scoped packages or first-time publishing
+        # --provenance only works with OIDC authentication
 
       - name: Push changes and tags
         run: |
