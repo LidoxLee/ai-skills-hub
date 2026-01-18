@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/lidoxlee/ai-skills-hub.git"
+    "url": "git+https://github.com/lidoxlee/ai-skills-hub.git"
   },
   "homepage": "https://github.com/lidoxlee/ai-skills-hub#readme",
   "bugs": {

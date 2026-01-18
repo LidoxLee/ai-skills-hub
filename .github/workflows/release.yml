@@ -51,8 +51,8 @@ jobs:
 
       - name: Publish to npm
         run: npm publish --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # Using Trusted Publishing (OIDC) - no NPM_TOKEN needed
+        # OIDC authentication is automatically handled by setup-node@v4
 
       - name: Push changes and tags
         run: |
