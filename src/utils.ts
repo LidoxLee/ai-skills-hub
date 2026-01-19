@@ -334,3 +334,74 @@ export function getSkillDescription(content: string, filepath: string): string {
   const name = parts[parts.length - 1];
   return name.replace(/[-_]/g, ' ');
 }
+
+/**
+ * Execute a shell script in a skill directory
+ * @param skillName - The name of the skill (e.g., 'go-testing')
+ * @param scriptPath - The relative path to the script within the skill directory (e.g., 'scripts/test.sh')
+ * @param args - Optional arguments to pass to the script
+ * @returns The output of the script execution
+ */
+export async function executeSkillScript(
+  skillName: string,
+  scriptPath: string,
+  args: string[] = []
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const { spawn } = await import('child_process');
+  const { resolve, normalize } = await import('path');
+  
+  // Construct full skill directory path
+  const skillDir = join(USER_SKILLS_DIR, skillName);
+  
+  // Check if skill directory exists
+  if (!existsSync(skillDir)) {
+    throw new Error(`Skill directory not found: ${skillName}`);
+  }
+  
+  // Normalize script path to prevent path traversal attacks
+  const normalizedScriptPath = normalize(scriptPath).replace(/^(\.\.(\/|\\|$))+/, '');
+  const fullScriptPath = resolve(skillDir, normalizedScriptPath);
+  
+  // Security check: ensure script is within skill directory
+  if (!fullScriptPath.startsWith(skillDir)) {
+    throw new Error(`Script path must be within skill directory: ${scriptPath}`);
+  }
+  
+  // Check if script file exists
+  if (!existsSync(fullScriptPath)) {
+    throw new Error(`Script file not found: ${scriptPath} in skill ${skillName}`);
+  }
+  
+  // Execute the script
+  return new Promise((resolve, reject) => {
+    const childProcess = spawn(fullScriptPath, args, {
+      cwd: skillDir,
+      shell: true,
+      env: { ...process.env },
+    });
+    
+    let stdout = '';
+    let stderr = '';
+    
+    childProcess.stdout?.on('data', (data: Buffer) => {
+      stdout += data.toString();
+    });
+    
+    childProcess.stderr?.on('data', (data: Buffer) => {
+      stderr += data.toString();
+    });
+    
+    childProcess.on('close', (code: number | null) => {
+      resolve({
+        stdout: stdout.trim(),
+        stderr: stderr.trim(),
+        exitCode: code || 0,
+      });
+    });
+    
+    childProcess.on('error', (error: Error) => {
+      reject(new Error(`Failed to execute script: ${error.message}`));
+    });
+  });
+}
+

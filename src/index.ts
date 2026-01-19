@@ -17,6 +17,7 @@ import {
   readSkillResourcesIndex,
   scanAllResources,
   readResourceByUri,
+  executeSkillScript,
 } from './utils.js';
 
 class SkillsHubServer {
@@ -71,14 +72,78 @@ class SkillsHubServer {
         }
       }
 
+      // Add tool for executing scripts in a skill directory
+      tools.push({
+        name: 'execute_skill_script',
+        description: 'Execute a shell script from a skill directory. This allows running automated tasks, tests, or other scripts defined in the skill.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            skill_name: {
+              type: 'string',
+              description: 'The name of the skill directory (e.g., "go-testing")',
+            },
+            script_path: {
+              type: 'string',
+              description: 'The relative path to the script within the skill directory (e.g., "scripts/test.sh")',
+            },
+            args: {
+              type: 'array',
+              items: {
+                type: 'string',
+              },
+              description: 'Optional arguments to pass to the script',
+            },
+          },
+          required: ['skill_name', 'script_path'],
+        },
+      });
+
       return { tools };
     });
 
     // Handle call_tool request
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name } = request.params;
+      const { name, arguments: args } = request.params;
 
-      // Convert tool name to filename (use async version to correctly match filename)
+      // Handle execute_skill_script tool
+      if (name === 'execute_skill_script') {
+        const { skill_name, script_path, args: scriptArgs = [] } = args as {
+          skill_name: string;
+          script_path: string;
+          args?: string[];
+        };
+        
+        try {
+          const result = await executeSkillScript(skill_name, script_path, scriptArgs);
+          
+          let output = `Script executed: ${script_path}\n`;
+          output += `Exit code: ${result.exitCode}\n\n`;
+          
+          if (result.stdout) {
+            output += `STDOUT:\n${result.stdout}\n\n`;
+          }
+          
+          if (result.stderr) {
+            output += `STDERR:\n${result.stderr}\n`;
+          }
+          
+          return {
+            content: [
+              {
+                type: 'text' as const,
+                text: output,
+              },
+            ],
+          };
+        } catch (error) {
+          throw new Error(
+            `Failed to execute script: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
+      }
+
+      // Handle regular skill tools
       const filename = await toolNameToFilename(name);
       if (!filename) {
         throw new Error(`Invalid tool name: ${name}`);

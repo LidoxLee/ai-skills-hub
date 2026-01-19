@@ -26,11 +26,35 @@ ai-skills-hub/
 
 ## Installation
 
-### Method 1: Using npx (Recommended)
+### Method 1: Global Installation (Recommended)
 
-**Prerequisites:** This method requires the package to be published to the npm registry. If the package hasn't been published yet, please use Method 2 (Local Installation).
+Install the package globally to use the CLI commands from anywhere:
 
-No installation required, use directly:
+```bash
+npm install -g ai-skills-hub
+```
+
+After installation, you can use both `skillshub` and `ai-skills-hub` commands:
+
+```bash
+# Sync skills library and configure AI tools
+skillshub sync
+# Or use the full command name
+ai-skills-hub sync
+
+# Check status
+skillshub check
+
+# List all skills
+skillshub list
+
+# View help
+skillshub help
+```
+
+### Method 2: Using npx (No Installation)
+
+If you prefer not to install globally, you can use npx to run commands directly:
 
 ```bash
 # Sync skills library and configure AI tools
@@ -46,9 +70,9 @@ npx ai-skills-hub list
 npx ai-skills-hub help
 ```
 
-**Note:** If the package hasn't been published to npm yet, `npx` won't be able to find it. Please use Method 2 for local installation first, or refer to the "Publishing to npm" section to publish it.
+### Method 3: Local Development Installation
 
-### Method 2: Local Installation
+For contributing or local development:
 
 1. **Clone the project**
    ```bash
@@ -66,34 +90,12 @@ npx ai-skills-hub help
    npm run build
    ```
 
-4. **Use CLI commands**
+4. **Link for local development**
    ```bash
-   # Sync skills library and configure AI tools
-   skillshub sync
-   # Or use shorthand
-   skillshub s
-
-   # Check status
-   skillshub check
-   # Or use shorthand
-   skillshub c
-
-   # List all skills
-   skillshub list
-   # Or use shorthand
-   skillshub l
-
-   # View help
-   skillshub help
+   npm link
    ```
 
-### Method 3: Global Installation
-
-```bash
-npm install -g ai-skills-hub
-```
-
-After installation, you can use the `skillshub` command from any directory.
+After linking, you can use `skillshub` commands as if it were globally installed.
 
 ## CLI Commands
 
@@ -240,6 +242,46 @@ More content...
 - The first heading will automatically be used as the tool description
 - Supports all standard Markdown syntax (headings, lists, code blocks, etc.)
 
+### Executing Shell Scripts from Skills
+
+**New Feature!** Skills can now include executable shell scripts that AI agents can run.
+
+**Directory Structure:**
+```
+~/.ai-skills-hub/skills/
+└── your-skill/
+    ├── SKILL.md
+    ├── scripts/
+    │   ├── setup.sh
+    │   └── test.sh
+    └── resources/
+```
+
+**Available Tool:**
+- `execute_skill_script` - Execute a specific script from a skill directory
+
+**How to Guide AI to Execute Scripts in SKILL.md:**
+```markdown
+# My Skill
+
+When working with this skill, please:
+1. Execute `scripts/setup.sh` to prepare the environment
+2. Run `scripts/test.sh` to validate the implementation
+
+## Available Scripts
+
+### setup.sh
+Prepares the development environment.
+Execute: `scripts/setup.sh`
+
+### test.sh
+Validates the implementation.
+Execute: `scripts/test.sh`
+
+...
+```
+
+
 ### Using MCP Skills in Cursor Agent
 
 **Important: MCP tools are only available in Cursor's Agent mode!**
@@ -263,8 +305,6 @@ More content...
    ```
    According to go_concurrency standards, help me refactor this code
    ```
-
-For detailed instructions, please refer to [CURSOR_MCP_GUIDE.md](CURSOR_MCP_GUIDE.md)
 
 ### Manual Testing of MCP Server
 
@@ -381,12 +421,6 @@ After publishing, team members can use Method 1 (npx) to install and use this to
 Skills are managed separately in their own repositories. Users add skills using `skillshub add <repository-url>`. To create a new skill repository, see the skill repository documentation.
 
 ### Troubleshooting
-
-#### MCP Server Won't Start
-
-- Confirm you've run `npm run build`
-- Check if `dist/index.js` exists
-- Verify Node.js version is 18+
 
 #### AI Tool Can't Connect to MCP Server
 

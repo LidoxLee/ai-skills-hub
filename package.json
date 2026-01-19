@@ -18,6 +18,7 @@
     "skillshub": "./dist/cli.js",
     "ai-skills-hub": "./dist/cli.js"
   },
+  "preferGlobal": true,
   "scripts": {
     "build": "tsc && chmod +x dist/cli.js",
     "start": "node dist/index.js",
