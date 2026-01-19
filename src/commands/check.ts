@@ -60,6 +60,12 @@ const AGENT_CONFIG: Record<string, AgentConfig> = {
     requiresCli: true,
     installUrl: 'https://github.com/openai/codex',
   },
+  'vscode': {
+    name: 'VS Code',
+    cliTool: null, // IDE-based, but may have CLI
+    requiresCli: false,
+    installUrl: 'https://code.visualstudio.com',
+  },
 };
 
 /**
@@ -221,21 +227,24 @@ function getConfigPath(os: string, tool: string): string | null {
       codex: `${homeDir}/.codex/config.json`,
       copilot: `${homeDir}/.config/github-copilot/config.json`,
       gemini: `${homeDir}/.config/gemini/config.json`,
-      'claude-code': `${homeDir}/.config/claude-code/config.json`
+      'claude-code': `${homeDir}/.config/claude-code/config.json`,
+      vscode: `${homeDir}/Library/Application Support/Code/User/settings.json`
     },
     linux: {
       cursor: `${homeDir}/.config/cursor/mcp.json`,
       codex: `${homeDir}/.config/codex/config.json`,
       copilot: `${homeDir}/.config/github-copilot/config.json`,
       gemini: `${homeDir}/.config/gemini/config.json`,
-      'claude-code': `${homeDir}/.config/claude-code/config.json`
+      'claude-code': `${homeDir}/.config/claude-code/config.json`,
+      vscode: `${homeDir}/.config/Code/User/settings.json`
     },
     windows: {
       cursor: `${appData}/Cursor/User/mcp.json`,
       codex: `${appData}/codex/config.json`,
       copilot: `${appData}/github-copilot/config.json`,
       gemini: `${appData}/gemini/config.json`,
-      'claude-code': `${appData}/claude-code/config.json`
+      'claude-code': `${appData}/claude-code/config.json`,
+      vscode: `${appData}/Code/User/settings.json`
     }
   };
 
@@ -345,6 +354,62 @@ function checkCursorInstalled(): boolean {
   return false;
 }
 
+function checkVSCodeInstalled(): boolean {
+  const platform = process.platform;
+  
+  if (platform === 'darwin') {
+    // macOS: Check for Visual Studio Code.app in common locations
+    const homeDir = process.env.HOME || '';
+    const paths = [
+      '/Applications/Visual Studio Code.app',
+      `${homeDir}/Applications/Visual Studio Code.app`
+    ];
+    return paths.some(path => existsSync(path));
+  } else if (platform === 'linux') {
+    // Linux: Check if code command exists
+    if (checkCommandInstalled('code')) {
+      return true;
+    }
+    const homeDir = process.env.HOME || '';
+    
+    // Check common installation paths
+    const commonPaths = [
+      join(homeDir, '.local', 'bin', 'code'),
+      '/usr/bin/code',
+      '/usr/local/bin/code',
+      '/opt/visual-studio-code/code'
+    ];
+    
+    return commonPaths.some(path => {
+      try {
+        return existsSync(path);
+      } catch {
+        return false;
+      }
+    });
+  } else if (platform === 'win32') {
+    // Windows: Check common installation paths
+    const localAppData = process.env.LOCALAPPDATA || '';
+    const programFiles = process.env.ProgramFiles || '';
+    const programFilesX86 = process.env['ProgramFiles(x86)'] || '';
+    
+    const paths = [
+      join(localAppData, 'Programs', 'Microsoft VS Code', 'Code.exe'),
+      join(programFiles, 'Microsoft VS Code', 'Code.exe'),
+      join(programFilesX86, 'Microsoft VS Code', 'Code.exe')
+    ];
+    
+    // Also check if code command exists in PATH
+    if (checkCommandInstalled('code')) {
+      return true;
+    }
+    
+    return paths.some(path => existsSync(path));
+  }
+  
+  return false;
+}
+
 /**
  * Get custom tool definitions for agents that need special installation checks
  * Returns a Map for O(1) lookup performance
@@ -359,6 +424,14 @@ function getAIToolsMap(): Map<string, AITool> {
         name: 'cursor',
         checkInstalled: checkCursorInstalled,
         getConfigPath: () => getConfigPath(os, 'cursor')
+      }
+    ],
+    [
+      'vscode',
+      {
+        name: 'vscode',
+        checkInstalled: checkVSCodeInstalled,
+        getConfigPath: () => getConfigPath(os, 'vscode')
       }
     ],
     // CLI-based tools can use standard checkCommandInstalled, but we still need config paths
