@@ -15,8 +15,8 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write       # push tag / create release
-      id-token: write       # npm OIDC provenance
+      contents: write        # GitHub Release
+      id-token: write        # npm OIDC (required)
 
     steps:
       - name: Checkout repository
@@ -24,21 +24,16 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Node.js
+      - name: Setup Node.js (OIDC)
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Configure npm authentication (fallback to NPM_TOKEN)
+      - name: Ensure no npm token is present
         run: |
-          set +x
-          if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
-            echo "✅ Using NPM_TOKEN authentication"
-            echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
-          else
-            echo "ℹ️  No NPM_TOKEN found, using OIDC authentication"
-          fi
+          unset NODE_AUTH_TOKEN || true
+          rm -f ~/.npmrc
 
       - name: Install dependencies
         run: npm ci
@@ -49,15 +44,10 @@ jobs:
       - name: Build project
         run: npm run build --if-present
 
-      - name: Publish to npm
+      - name: Publish to npm (OIDC only, provenance enabled)
         run: |
-          if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
-            echo "🚀 Publishing with OIDC (provenance enabled)"
-            npm publish --provenance --access public
-          else
-            echo "🚀 Publishing with NPM_TOKEN"
-            npm publish --access public
-          fi
+          echo "🚀 Publishing with npm OIDC (provenance enabled)"
+          npm publish --provenance --access public
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
