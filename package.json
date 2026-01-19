@@ -6,11 +6,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lidoxlee/ai-skills-hub.git"
+    "url": "https://github.com/LidoxLee/ai-skills-hub"
   },
-  "homepage": "https://github.com/lidoxlee/ai-skills-hub#readme",
+  "homepage": "https://github.com/LidoxLee/ai-skills-hub#readme",
   "bugs": {
-    "url": "https://github.com/lidoxlee/ai-skills-hub/issues"
+    "url": "https://github.com/LidoxLee/ai-skills-hub/issues"
   },
   "main": "dist/index.js",
   "type": "module",
