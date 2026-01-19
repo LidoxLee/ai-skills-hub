@@ -34,7 +34,8 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "commander": "^11.0.0"
+    "commander": "^11.0.0",
+    "hono": "^4.11.4"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
