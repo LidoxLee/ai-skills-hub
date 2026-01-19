@@ -37,6 +37,9 @@ skillshub sync
 # 或使用完整命令名稱
 ai-skills-hub sync
 
+# 從 URL 新增技能
+skillshub add <url>
+
 # 檢查狀態
 skillshub check
 
@@ -54,6 +57,9 @@ skillshub help
 ```bash
 # 同步技能庫並配置 AI 工具
 npx ai-skills-hub sync
+
+# 從 URL 新增技能
+npx ai-skills-hub add <url>
 
 # 檢查狀態
 npx ai-skills-hub check
@@ -132,6 +138,43 @@ skillshub check --verbose
 **輸出圖例：**
 - `✓` 綠色標記：已安裝/已配置
 - `○` 黃色標記：未安裝/未配置
+
+### `skillshub add` / `skillshub a`
+
+從 URL 新增技能到您的本地技能庫。
+
+此命令將：
+- 從提供的 URL 下載 `SKILL.md` 檔案
+- 自動將 GitHub blob URL 轉換為 raw URL
+- 從 URL 路徑中提取技能名稱
+- 將技能儲存到 `~/.ai-skills-hub/skills/<skill-name>/`
+
+**選項：**
+- `-f, --force`: 如果技能已存在則覆蓋
+
+**範例：**
+```bash
+# 從 GitHub blob URL 新增技能
+skillshub add https://github.com/user/repo/blob/main/skills/api-design/SKILL.md
+
+# 從 raw URL 新增技能
+skillshub add https://raw.githubusercontent.com/user/repo/main/skills/api-design/SKILL.md
+
+# 強制覆蓋現有技能
+skillshub add https://github.com/user/repo/blob/main/skills/api-design/SKILL.md --force
+```
+
+**URL 格式：**
+- GitHub blob URL：`https://github.com/{user}/{repo}/blob/{branch}/path/to/SKILL.md`
+- Raw GitHub URL：`https://raw.githubusercontent.com/{user}/{repo}/{branch}/path/to/SKILL.md`
+- 命令會自動將 blob URL 轉換為 raw URL
+
+**工作流程：**
+1. 命令從 URL 下載 SKILL.md 檔案
+2. 從目錄路徑提取技能名稱（例如：從 `.../api-design/SKILL.md` 提取 `api-design`）
+3. 建立目錄 `~/.ai-skills-hub/skills/<skill-name>/`
+4. 將檔案儲存為該目錄中的 `SKILL.md`
+5. 執行 `skillshub sync` 更新 MCP 配置
 
 ### `skillshub list` / `skillshub l`
 

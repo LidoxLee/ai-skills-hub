@@ -42,6 +42,9 @@ skillshub sync
 # Or use the full command name
 ai-skills-hub sync
 
+# Add a skill from URL
+skillshub add <url>
+
 # Check status
 skillshub check
 
@@ -59,6 +62,9 @@ If you prefer not to install globally, you can use npx to run commands directly:
 ```bash
 # Sync skills library and configure AI tools
 npx ai-skills-hub sync
+
+# Add a skill from URL
+npx ai-skills-hub add <url>
 
 # Check status
 npx ai-skills-hub check
@@ -137,6 +143,43 @@ skillshub check --verbose
 **Output Legend:**
 - `✓` Green marker: Installed/Configured
 - `○` Yellow marker: Not installed/Not configured
+
+### `skillshub add` / `skillshub a`
+
+Add a skill from a URL to your local skills library.
+
+This command will:
+- Download a `SKILL.md` file from the provided URL
+- Automatically convert GitHub blob URLs to raw URLs
+- Extract the skill name from the URL path
+- Save the skill to `~/.ai-skills-hub/skills/<skill-name>/`
+
+**Options:**
+- `-f, --force`: Overwrite existing skill if it already exists
+
+**Examples:**
+```bash
+# Add a skill from GitHub blob URL
+skillshub add https://github.com/user/repo/blob/main/skills/api-design/SKILL.md
+
+# Add a skill from raw URL
+skillshub add https://raw.githubusercontent.com/user/repo/main/skills/api-design/SKILL.md
+
+# Force overwrite existing skill
+skillshub add https://github.com/user/repo/blob/main/skills/api-design/SKILL.md --force
+```
+
+**URL Formats:**
+- GitHub blob URL: `https://github.com/{user}/{repo}/blob/{branch}/path/to/SKILL.md`
+- Raw GitHub URL: `https://raw.githubusercontent.com/{user}/{repo}/{branch}/path/to/SKILL.md`
+- The command automatically converts blob URLs to raw URLs
+
+**Workflow:**
+1. Command downloads the SKILL.md file from the URL
+2. Extracts skill name from the directory path (e.g., `api-design` from `.../api-design/SKILL.md`)
+3. Creates directory `~/.ai-skills-hub/skills/<skill-name>/`
+4. Saves the file as `SKILL.md` in that directory
+5. Run `skillshub sync` to update MCP configuration
 
 ### `skillshub list` / `skillshub l`
 
