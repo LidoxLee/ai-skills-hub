@@ -97,6 +97,7 @@ export async function syncCommand(options: SyncOptions) {
     // Configure each AI tool
     await configureClaudeDesktop(os, mcpConfig);
     await configureCursor(os, mcpConfig);
+    await configureVSCode(os, mcpConfig);
     await configureCodex(os);
     await configureCopilot(os);
     await configureGemini(os);
@@ -135,6 +136,7 @@ function getConfigPath(os: string, tool: string): string | null {
     macos: {
       'claude-desktop': `${homeDir}/Library/Application Support/Claude/claude_desktop_config.json`,
       'cursor': `${homeDir}/.cursor/mcp.json`,
+      'vscode': `${homeDir}/Library/Application Support/Code/User/settings.json`,
       'codex': `${homeDir}/.codex/config.json`,
       'copilot': `${homeDir}/.config/github-copilot/config.json`,
       'gemini': `${homeDir}/.config/gemini/config.json`,
@@ -143,6 +145,7 @@ function getConfigPath(os: string, tool: string): string | null {
     linux: {
       'claude-desktop': `${homeDir}/.config/Claude/claude_desktop_config.json`,
       'cursor': `${homeDir}/.config/cursor/mcp.json`,
+      'vscode': `${homeDir}/.config/Code/User/settings.json`,
       'codex': `${homeDir}/.config/codex/config.json`,
       'copilot': `${homeDir}/.config/github-copilot/config.json`,
       'gemini': `${homeDir}/.config/gemini/config.json`,
@@ -151,6 +154,7 @@ function getConfigPath(os: string, tool: string): string | null {
     windows: {
       'claude-desktop': `${process.env.APPDATA}/Claude/claude_desktop_config.json`,
       'cursor': `${process.env.APPDATA}/Cursor/User/mcp.json`,
+      'vscode': `${process.env.APPDATA}/Code/User/settings.json`,
       'codex': `${process.env.APPDATA}/codex/config.json`,
       'copilot': `${process.env.APPDATA}/github-copilot/config.json`,
       'gemini': `${process.env.APPDATA}/gemini/config.json`,
@@ -198,6 +202,33 @@ function updateJsonConfig(configPath: string, mcpConfig: any): void {
   console.log(`\x1b[32mUpdated: ${configPath}\x1b[0m`);
 }
 
+function updateVSCodeConfig(configPath: string, vscodeConfig: any): void {
+  const configDir = dirname(configPath);
+  mkdirSync(configDir, { recursive: true });
+
+  backupConfig(configPath);
+
+  let existingConfig: any = {};
+  if (existsSync(configPath)) {
+    try {
+      const content = readFileSync(configPath, 'utf-8');
+      existingConfig = JSON.parse(content);
+    } catch (error) {
+      console.log(`\x1b[33mWarning: Unable to read existing config, will create new config\x1b[0m`);
+    }
+  }
+
+  // Merge VS Code MCP configuration
+  const mergedConfig = {
+    ...existingConfig,
+    'mcp.servers': vscodeConfig.servers,
+    'mcp.inputs': vscodeConfig.inputs
+  };
+
+  writeFileSync(configPath, JSON.stringify(mergedConfig, null, 2), 'utf-8');
+  console.log(`\x1b[32mUpdated: ${configPath}\x1b[0m`);
+}
+
 async function configureClaudeDesktop(os: string, mcpConfig: any): Promise<void> {
   console.log('\n\x1b[33mConfiguring Claude Desktop...\x1b[0m');
   const configPath = getConfigPath(os, 'claude-desktop');
@@ -211,6 +242,41 @@ async function configureCursor(os: string, mcpConfig: any): Promise<void> {
   const configPath = getConfigPath(os, 'cursor');
   if (configPath) {
     updateJsonConfig(configPath, mcpConfig);
+  }
+}
+
+async function configureVSCode(os: string, mcpConfig: any): Promise<void> {
+  console.log('\n\x1b[33mConfiguring VS Code...\x1b[0m');
+  const configPath = getConfigPath(os, 'vscode');
+  if (configPath) {
+    try {
+      // Check if VS Code is installed by checking if settings.json directory exists
+      const configDir = dirname(configPath);
+      if (!existsSync(configDir)) {
+        console.log('\x1b[33mVS Code not installed or settings directory not found, skipping configuration\x1b[0m');
+        return;
+      }
+      
+      // VS Code uses a different MCP config format
+      const mcpServerPath = mcpConfig.mcpServers['ai-skills-hub'].args[0];
+      const vscodeConfig = {
+        servers: {
+          'ai-skills-hub': {
+            type: 'stdio',
+            command: 'node',
+            args: [mcpServerPath]
+          }
+        },
+        inputs: []
+      };
+      
+      updateVSCodeConfig(configPath, vscodeConfig);
+    } catch (error) {
+      console.log('\x1b[33mFailed to configure VS Code, skipping\x1b[0m');
+      if (error instanceof Error) {
+        console.log(`\x1b[33mError: ${error.message}\x1b[0m`);
+      }
+    }
   }
 }
 
