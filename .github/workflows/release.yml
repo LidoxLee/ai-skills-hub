@@ -83,3 +83,22 @@ jobs:
       - name: Push changes and tags
         run: |
           git push origin main --follow-tags
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.bump_version.outputs.new_version }}
+          name: Release ${{ steps.bump_version.outputs.new_version }}
+          body: |
+            🎉 New release ${{ steps.bump_version.outputs.new_version }}
+            
+            ## Changes
+            See commit history for details.
+            
+            ## Installation
+            ```bash
+            npm install -g ai-skills-hub@${{ steps.bump_version.outputs.new_version }}
+            ```
+          draft: false
+          prerelease: false
+          generate_release_notes: true
