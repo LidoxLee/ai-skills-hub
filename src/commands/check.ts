@@ -165,12 +165,19 @@ export async function checkCommand(options: CheckOptions) {
       const content = readFileSync(configPath, 'utf-8');
       const json = JSON.parse(content);
       
-      if (json.mcpServers && json.mcpServers['ai-skills-hub']) {
+      // VS Code uses 'mcp.servers' format, other tools use 'mcpServers'
+      const hasMcpConfig = agentKey === 'vscode'
+        ? (json['mcp.servers'] && json['mcp.servers']['ai-skills-hub'])
+        : (json.mcpServers && json.mcpServers['ai-skills-hub']);
+      
+      if (hasMcpConfig) {
         configuredTools.push(agentConfig.name);
         console.log(`\x1b[32m✓ ${agentConfig.name}\x1b[0m`);
         if (options.verbose) {
           console.log(`   Config file: ${configPath}`);
-          const mcpConfig = json.mcpServers['ai-skills-hub'];
+          const mcpConfig = agentKey === 'vscode'
+            ? json['mcp.servers']['ai-skills-hub']
+            : json.mcpServers['ai-skills-hub'];
           if (mcpConfig.command) {
             console.log(`   Command: ${mcpConfig.command} ${mcpConfig.args?.join(' ') || ''}`);
           }
