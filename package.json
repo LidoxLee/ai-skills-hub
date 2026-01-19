@@ -1,6 +1,6 @@
 {
   "name": "ai-skills-hub",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "MCP server that dynamically loads skills from Markdown files for AI assistants",
   "author": "Lido.Lee <lidoxlee@gmail.com>",
   "license": "MIT",
