@@ -27,6 +27,27 @@ export async function syncCommand(options: SyncOptions) {
 
   const isNpmEnv = isNpmPackage();
   
+  // Create ai-skills-hub directory in user's home directory
+  const homeDir = process.env.HOME || process.env.USERPROFILE || '';
+  const aiSkillsHubDir = join(homeDir, '.ai-skills-hub');
+  const skillsDir = join(aiSkillsHubDir, 'skills');
+  
+  try {
+    if (!existsSync(aiSkillsHubDir)) {
+      mkdirSync(aiSkillsHubDir, { recursive: true });
+      console.log(`\x1b[32m✓ Created directory: ${aiSkillsHubDir}\x1b[0m`);
+    }
+    if (!existsSync(skillsDir)) {
+      mkdirSync(skillsDir, { recursive: true });
+      console.log(`\x1b[32m✓ Created skills directory: ${skillsDir}\x1b[0m`);
+    }
+  } catch (error) {
+    console.log('\x1b[33mWarning: Failed to create ai-skills-hub directory, continuing...\x1b[0m');
+    if (error instanceof Error) {
+      console.log(`\x1b[33mError: ${error.message}\x1b[0m`);
+    }
+  }
+  
   try {
     // 1. Git Pull (only execute in local development environment)
     if (!isNpmEnv) {
