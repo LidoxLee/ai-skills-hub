@@ -234,27 +234,27 @@ function getConfigPath(os: string, tool: string): string | null {
       codex: `${homeDir}/.codex/config.json`,
       copilot: `${homeDir}/.config/github-copilot/config.json`,
       gemini: `${homeDir}/.config/gemini/config.json`,
-      'claude-code': `${homeDir}/.claude/claude_code_config.json`,
+      'claude-code': `${homeDir}/.claude.json`,
       vscode: `${homeDir}/Library/Application Support/Code/User/settings.json`,
-      claude: `${homeDir}/.claude/claude_code_config.json`
+      claude: `${homeDir}/.claude.json`
     },
     linux: {
       cursor: `${homeDir}/.config/cursor/mcp.json`,
       codex: `${homeDir}/.config/codex/config.json`,
       copilot: `${homeDir}/.config/github-copilot/config.json`,
       gemini: `${homeDir}/.config/gemini/config.json`,
-      'claude-code': `${homeDir}/.claude/claude_code_config.json`,
+      'claude-code': `${homeDir}/.claude.json`,
       vscode: `${homeDir}/.config/Code/User/settings.json`,
-      claude: `${homeDir}/.claude/claude_code_config.json`
+      claude: `${homeDir}/.claude.json`
     },
     windows: {
       cursor: `${appData}/Cursor/User/mcp.json`,
       codex: `${appData}/codex/config.json`,
       copilot: `${appData}/github-copilot/config.json`,
       gemini: `${appData}/gemini/config.json`,
-      'claude-code': `${homeDir}/.claude/claude_code_config.json`,
+      'claude-code': `${homeDir}/.claude.json`,
       vscode: `${appData}/Code/User/settings.json`,
-      claude: `${homeDir}/.claude/claude_code_config.json`
+      claude: `${homeDir}/.claude.json`
     }
   };
 

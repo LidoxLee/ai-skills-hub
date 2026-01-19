@@ -155,31 +155,28 @@ function getConfigPath(os: string, tool: string): string | null {
   
   const paths: Record<string, Record<string, string>> = {
     macos: {
-      'claude-desktop': `${homeDir}/Library/Application Support/Claude/claude_desktop_config.json`,
       'cursor': `${homeDir}/.cursor/mcp.json`,
       'vscode': `${homeDir}/Library/Application Support/Code/User/settings.json`,
       'codex': `${homeDir}/.codex/config.json`,
       'copilot': `${homeDir}/.config/github-copilot/config.json`,
       'gemini': `${homeDir}/.config/gemini/config.json`,
-      'claude-code': `${homeDir}/.claude/claude_code_config.json`
+      'claude-code': `${homeDir}/.claude.json`
     },
     linux: {
-      'claude-desktop': `${homeDir}/.config/Claude/claude_desktop_config.json`,
       'cursor': `${homeDir}/.config/cursor/mcp.json`,
       'vscode': `${homeDir}/.config/Code/User/settings.json`,
       'codex': `${homeDir}/.config/codex/config.json`,
       'copilot': `${homeDir}/.config/github-copilot/config.json`,
       'gemini': `${homeDir}/.config/gemini/config.json`,
-      'claude-code': `${homeDir}/.claude/claude_code_config.json`
+      'claude-code': `${homeDir}/.claude.json`
     },
     windows: {
-      'claude-desktop': `${process.env.APPDATA}/Claude/claude_desktop_config.json`,
       'cursor': `${process.env.APPDATA}/Cursor/User/mcp.json`,
       'vscode': `${process.env.APPDATA}/Code/User/settings.json`,
       'codex': `${process.env.APPDATA}/codex/config.json`,
       'copilot': `${process.env.APPDATA}/github-copilot/config.json`,
       'gemini': `${process.env.APPDATA}/gemini/config.json`,
-      'claude-code': `${homeDir}/.claude/claude_code_config.json`
+      'claude-code': `${process.env.APPDATA}/.claude.json`
     }
   };
 
