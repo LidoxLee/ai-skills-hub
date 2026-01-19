@@ -2,7 +2,8 @@ name: Release
 
 on:
   push:
-    branches: [ main ]
+    tags:
+      - "v*.*.*"
   workflow_dispatch:
 
 concurrency:
@@ -12,93 +13,57 @@ concurrency:
 jobs:
   release:
     runs-on: ubuntu-latest
+
     permissions:
-      contents: write    
-      id-token: write    
+      contents: write       # push tag / create release
+      id-token: write       # npm OIDC provenance
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
-          # Use NPM_TOKEN if available (recommended for first-time publishing)
-          # Otherwise, use OIDC authentication
-          scope: ''
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
 
-      - name: Configure npm authentication (if NPM_TOKEN exists)
+      - name: Configure npm authentication (fallback to NPM_TOKEN)
         run: |
-          set +x  # Disable command echoing to prevent token exposure
+          set +x
           if [ -n "${{ secrets.NPM_TOKEN }}" ]; then
-            echo "✅ Using NPM_TOKEN for authentication"
+            echo "✅ Using NPM_TOKEN authentication"
             echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" >> ~/.npmrc
           else
-            echo "ℹ️  NPM_TOKEN not found, will use OIDC authentication"
+            echo "ℹ️  No NPM_TOKEN found, using OIDC authentication"
           fi
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Configure Git
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "github-actions[bot]"
-
-      - name: Bump version and create tag
-        id: bump_version
-        run: |
-          NEW_VERSION=$(npm version patch --no-git-tag-version)
-          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-          
-          git add package.json package-lock.json
-          git commit -m "chore: release $NEW_VERSION [skip ci]"
-          git tag -a "$NEW_VERSION" -m "Release $NEW_VERSION"
+      - name: Run tests
+        run: npm test --if-present
 
       - name: Build project
-        run: npm run build
+        run: npm run build --if-present
 
       - name: Publish to npm
         run: |
           if [ -z "${{ secrets.NPM_TOKEN }}" ]; then
-            echo "ℹ️  Using OIDC authentication (requires npm account OIDC setup)"
-            echo "If this fails, add NPM_TOKEN secret to repository settings"
+            echo "🚀 Publishing with OIDC (provenance enabled)"
             npm publish --provenance --access public
           else
-            echo "ℹ️  Using NPM_TOKEN for authentication"
+            echo "🚀 Publishing with NPM_TOKEN"
             npm publish --access public
           fi
-        # Authentication methods (in order of preference):
-        # 1. NPM_TOKEN secret (recommended for first-time publishing)
-        # 2. OIDC via setup-node@v4 (requires npm account OIDC setup)
-        # --access public is required for scoped packages or first-time publishing
-        # --provenance only works with OIDC authentication
-
-      - name: Push changes and tags
-        run: |
-          git push origin main --follow-tags
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ steps.bump_version.outputs.new_version }}
-          name: Release ${{ steps.bump_version.outputs.new_version }}
-          body: |
-            🎉 New release ${{ steps.bump_version.outputs.new_version }}
-            
-            ## Changes
-            See commit history for details.
-            
-            ## Installation
-            ```bash
-            npm install -g ai-skills-hub@${{ steps.bump_version.outputs.new_version }}
-            ```
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
           draft: false
           prerelease: false
-          generate_release_notes: true
