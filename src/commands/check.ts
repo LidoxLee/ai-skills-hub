@@ -234,24 +234,27 @@ function getConfigPath(os: string, tool: string): string | null {
       codex: `${homeDir}/.codex/config.json`,
       copilot: `${homeDir}/.config/github-copilot/config.json`,
       gemini: `${homeDir}/.config/gemini/config.json`,
-      'claude-code': `${homeDir}/.config/claude-code/config.json`,
-      vscode: `${homeDir}/Library/Application Support/Code/User/settings.json`
+      'claude-code': `${homeDir}/.claude/claude_code_config.json`,
+      vscode: `${homeDir}/Library/Application Support/Code/User/settings.json`,
+      claude: `${homeDir}/.claude/claude_code_config.json`
     },
     linux: {
       cursor: `${homeDir}/.config/cursor/mcp.json`,
       codex: `${homeDir}/.config/codex/config.json`,
       copilot: `${homeDir}/.config/github-copilot/config.json`,
       gemini: `${homeDir}/.config/gemini/config.json`,
-      'claude-code': `${homeDir}/.config/claude-code/config.json`,
-      vscode: `${homeDir}/.config/Code/User/settings.json`
+      'claude-code': `${homeDir}/.claude/claude_code_config.json`,
+      vscode: `${homeDir}/.config/Code/User/settings.json`,
+      claude: `${homeDir}/.claude/claude_code_config.json`
     },
     windows: {
       cursor: `${appData}/Cursor/User/mcp.json`,
       codex: `${appData}/codex/config.json`,
       copilot: `${appData}/github-copilot/config.json`,
       gemini: `${appData}/gemini/config.json`,
-      'claude-code': `${appData}/claude-code/config.json`,
-      vscode: `${appData}/Code/User/settings.json`
+      'claude-code': `${homeDir}/.claude/claude_code_config.json`,
+      vscode: `${appData}/Code/User/settings.json`,
+      claude: `${homeDir}/.claude/claude_code_config.json`
     }
   };
 
@@ -472,6 +475,14 @@ function getAIToolsMap(): Map<string, AITool> {
         name: 'claude-code',
         checkInstalled: () => checkCommandInstalled('claude') || checkCommandInstalled('claude-code'),
         getConfigPath: () => getConfigPath(os, 'claude-code')
+      }
+    ],
+    [
+      'claude',
+      {
+        name: 'claude',
+        checkInstalled: () => checkCommandInstalled('claude'),
+        getConfigPath: () => getConfigPath(os, 'claude')
       }
     ]
   ]);

@@ -122,7 +122,7 @@ export async function syncCommand(options: SyncOptions) {
     await configureCodex(os);
     await configureCopilot(os);
     await configureGemini(os);
-    await configureClaudeCode(os);
+    await configureClaudeCode(os, mcpConfig);
 
     // 5. Complete
     const finalStepNumber = isNpmEnv ? '[3/3]' : '[4/4]';
@@ -161,7 +161,7 @@ function getConfigPath(os: string, tool: string): string | null {
       'codex': `${homeDir}/.codex/config.json`,
       'copilot': `${homeDir}/.config/github-copilot/config.json`,
       'gemini': `${homeDir}/.config/gemini/config.json`,
-      'claude-code': `${homeDir}/.config/claude-code/config.json`
+      'claude-code': `${homeDir}/.claude/claude_code_config.json`
     },
     linux: {
       'claude-desktop': `${homeDir}/.config/Claude/claude_desktop_config.json`,
@@ -170,7 +170,7 @@ function getConfigPath(os: string, tool: string): string | null {
       'codex': `${homeDir}/.config/codex/config.json`,
       'copilot': `${homeDir}/.config/github-copilot/config.json`,
       'gemini': `${homeDir}/.config/gemini/config.json`,
-      'claude-code': `${homeDir}/.config/claude-code/config.json`
+      'claude-code': `${homeDir}/.claude/claude_code_config.json`
     },
     windows: {
       'claude-desktop': `${process.env.APPDATA}/Claude/claude_desktop_config.json`,
@@ -179,7 +179,7 @@ function getConfigPath(os: string, tool: string): string | null {
       'codex': `${process.env.APPDATA}/codex/config.json`,
       'copilot': `${process.env.APPDATA}/github-copilot/config.json`,
       'gemini': `${process.env.APPDATA}/gemini/config.json`,
-      'claude-code': `${process.env.APPDATA}/claude-code/config.json`
+      'claude-code': `${homeDir}/.claude/claude_code_config.json`
     }
   };
 
@@ -358,25 +358,34 @@ async function configureGemini(os: string): Promise<void> {
   }
 }
 
-async function configureClaudeCode(os: string): Promise<void> {
+async function configureClaudeCode(os: string, mcpConfig: any): Promise<void> {
   console.log('\n\x1b[33mConfiguring Claude Code CLI...\x1b[0m');
+  
+  let commandFound = false;
+  let command = '';
+  
+  // Check for 'claude' command first
   try {
     execSync('which claude', { stdio: 'ignore' });
-    const configPath = getConfigPath(os, 'claude-code');
-    if (configPath) {
-      mkdirSync(dirname(configPath), { recursive: true });
-      if (!existsSync(configPath)) {
-        writeFileSync(configPath, '{}', 'utf-8');
-      }
-      console.log(`\x1b[32mClaude Code config file location: ${configPath}\x1b[0m`);
-      console.log('\x1b[33mPlease manually check if Claude Code CLI supports MCP configuration\x1b[0m');
-    }
+    commandFound = true;
+    command = 'claude';
   } catch {
+    // If 'claude' not found, try 'claude-code'
     try {
       execSync('which claude-code', { stdio: 'ignore' });
+      commandFound = true;
+      command = 'claude-code';
     } catch {
       console.log('\x1b[33mClaude Code CLI not installed, skipping configuration\x1b[0m');
       console.log('Install command: npm install -g @anthropic-ai/claude-code');
+    }
+  }
+  
+  if (commandFound) {
+    console.log(`\x1b[32mFound command: ${command}\x1b[0m`);
+    const configPath = getConfigPath(os, 'claude-code');
+    if (configPath) {
+      updateJsonConfig(configPath, mcpConfig);
     }
   }
 }
