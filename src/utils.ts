@@ -372,11 +372,10 @@ export async function executeSkillScript(
     throw new Error(`Script file not found: ${scriptPath} in skill ${skillName}`);
   }
   
-  // Execute the script
+  // Execute the script using bash with the full absolute path
   return new Promise((resolve, reject) => {
-    const childProcess = spawn(fullScriptPath, args, {
+    const childProcess = spawn('bash', [fullScriptPath, ...args], {
       cwd: skillDir,
-      shell: true,
       env: { ...process.env },
     });
     
