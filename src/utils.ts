@@ -350,8 +350,38 @@ export async function executeSkillScript(
   const { spawn } = await import('child_process');
   const { resolve, normalize } = await import('path');
   
-  // Construct full skill directory path
-  const skillDir = join(USER_SKILLS_DIR, skillName);
+  // Find the actual skill directory (handle underscore to hyphen conversion)
+  let skillDir = join(USER_SKILLS_DIR, skillName);
+  
+  // If directory doesn't exist with underscores, try finding it by scanning
+  if (!existsSync(skillDir)) {
+    // Try converting underscores to hyphens
+    const alternativeName = skillName.replace(/_/g, '-');
+    const alternativeDir = join(USER_SKILLS_DIR, alternativeName);
+    
+    if (existsSync(alternativeDir)) {
+      skillDir = alternativeDir;
+    } else {
+      // Scan directory to find matching skill
+      try {
+        const entries = await readdir(USER_SKILLS_DIR);
+        for (const entry of entries) {
+          const entryPath = join(USER_SKILLS_DIR, entry);
+          const stats = await stat(entryPath);
+          if (stats.isDirectory()) {
+            // Check if this directory name matches when converted to tool name
+            const normalizedEntry = entry.replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+            if (normalizedEntry === skillName.toLowerCase()) {
+              skillDir = entryPath;
+              break;
+            }
+          }
+        }
+      } catch (error) {
+        // If scanning fails, continue with original error
+      }
+    }
+  }
   
   // Check if skill directory exists
   if (!existsSync(skillDir)) {
