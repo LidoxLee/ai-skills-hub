@@ -119,7 +119,7 @@ export async function syncCommand(options: SyncOptions) {
     await configureClaudeDesktop(os, mcpConfig);
     await configureCursor(os, mcpConfig);
     await configureVSCode(os, mcpConfig);
-    await configureCodex(os);
+    await configureCodex(os, mcpConfig);
     await configureCopilot(os);
     await configureGemini(os);
     await configureClaudeCode(os, mcpConfig);
@@ -157,7 +157,7 @@ function getConfigPath(os: string, tool: string): string | null {
     macos: {
       'cursor': `${homeDir}/.cursor/mcp.json`,
       'vscode': `${homeDir}/Library/Application Support/Code/User/settings.json`,
-      'codex': `${homeDir}/.codex/config.json`,
+      'codex': `${homeDir}/.codex/config.toml`,
       'copilot': `${homeDir}/.config/github-copilot/config.json`,
       'gemini': `${homeDir}/.config/gemini/config.json`,
       'claude-code': `${homeDir}/.claude.json`
@@ -165,7 +165,7 @@ function getConfigPath(os: string, tool: string): string | null {
     linux: {
       'cursor': `${homeDir}/.config/cursor/mcp.json`,
       'vscode': `${homeDir}/.config/Code/User/settings.json`,
-      'codex': `${homeDir}/.config/codex/config.json`,
+      'codex': `${homeDir}/.codex/config.toml`,
       'copilot': `${homeDir}/.config/github-copilot/config.json`,
       'gemini': `${homeDir}/.config/gemini/config.json`,
       'claude-code': `${homeDir}/.claude.json`
@@ -173,7 +173,7 @@ function getConfigPath(os: string, tool: string): string | null {
     windows: {
       'cursor': `${process.env.APPDATA}/Cursor/User/mcp.json`,
       'vscode': `${process.env.APPDATA}/Code/User/settings.json`,
-      'codex': `${process.env.APPDATA}/codex/config.json`,
+      'codex': `${process.env.APPDATA}/codex/config.toml`,
       'copilot': `${process.env.APPDATA}/github-copilot/config.json`,
       'gemini': `${process.env.APPDATA}/gemini/config.json`,
       'claude-code': `${process.env.APPDATA}/.claude.json`
@@ -247,6 +247,53 @@ function updateVSCodeConfig(configPath: string, vscodeConfig: any): void {
   console.log(`\x1b[32mUpdated: ${configPath}\x1b[0m`);
 }
 
+function updateTomlConfig(configPath: string, mcpServerPath: string): void {
+  const configDir = dirname(configPath);
+  mkdirSync(configDir, { recursive: true });
+
+  backupConfig(configPath);
+
+  let existingContent = '';
+  if (existsSync(configPath)) {
+    try {
+      existingContent = readFileSync(configPath, 'utf-8');
+    } catch (error) {
+      console.log(`\x1b[33mWarning: Unable to read existing config, will create new config\x1b[0m`);
+    }
+  }
+
+  // Check if [mcp_servers.ai-skills-hub] section already exists
+  const sectionRegex = /^\[mcp_servers\.ai-skills-hub\]/m;
+  let updatedContent = '';
+
+  if (sectionRegex.test(existingContent)) {
+    // Section exists, update it
+    console.log('\x1b[33mExisting MCP configuration found, updating...\x1b[0m');
+    
+    // Replace the entire [mcp_servers.ai-skills-hub] section
+    const replacementRegex = /^\[mcp_servers\.ai-skills-hub\][\s\S]*?(?=^\[|$)/m;
+    const newSection = generateTomlMcpSection(mcpServerPath);
+    updatedContent = existingContent.replace(replacementRegex, newSection);
+  } else {
+    // Section doesn't exist, append it
+    console.log('\x1b[33mAdding new MCP configuration...\x1b[0m');
+    
+    // Add a newline before the section if the file is not empty
+    const separator = existingContent.trim() ? '\n\n' : '';
+    updatedContent = existingContent + separator + generateTomlMcpSection(mcpServerPath);
+  }
+
+  writeFileSync(configPath, updatedContent, 'utf-8');
+  console.log(`\x1b[32mUpdated: ${configPath}\x1b[0m`);
+}
+
+function generateTomlMcpSection(mcpServerPath: string): string {
+  return `[mcp_servers.ai-skills-hub]
+command = "node"
+args = ["${mcpServerPath}"]
+`;
+}
+
 async function configureClaudeDesktop(os: string, mcpConfig: any): Promise<void> {
   console.log('\n\x1b[33mConfiguring Claude Desktop...\x1b[0m');
   const configPath = getConfigPath(os, 'claude-desktop');
@@ -298,18 +345,14 @@ async function configureVSCode(os: string, mcpConfig: any): Promise<void> {
   }
 }
 
-async function configureCodex(os: string): Promise<void> {
+async function configureCodex(os: string, mcpConfig: any): Promise<void> {
   console.log('\n\x1b[33mConfiguring OpenAI Codex...\x1b[0m');
   try {
     execSync('which codex', { stdio: 'ignore' });
     const configPath = getConfigPath(os, 'codex');
     if (configPath) {
-      mkdirSync(dirname(configPath), { recursive: true });
-      if (!existsSync(configPath)) {
-        writeFileSync(configPath, '{}', 'utf-8');
-      }
-      console.log(`\x1b[32mCodex config file location: ${configPath}\x1b[0m`);
-      console.log('\x1b[33mPlease manually check if Codex supports MCP configuration\x1b[0m');
+      const mcpServerPath = mcpConfig.mcpServers['ai-skills-hub'].args[0];
+      updateTomlConfig(configPath, mcpServerPath);
     }
   } catch {
     console.log('\x1b[33mCodex CLI not installed, skipping configuration\x1b[0m');

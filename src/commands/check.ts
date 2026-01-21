@@ -163,30 +163,57 @@ export async function checkCommand(options: CheckOptions) {
     // Config file exists, check MCP configuration
     try {
       const content = readFileSync(configPath, 'utf-8');
-      const json = JSON.parse(content);
+      let hasMcpConfig = false;
       
-      // VS Code uses 'mcp.servers' format, other tools use 'mcpServers'
-      const hasMcpConfig = agentKey === 'vscode'
-        ? (json['mcp.servers'] && json['mcp.servers']['ai-skills-hub'])
-        : (json.mcpServers && json.mcpServers['ai-skills-hub']);
-      
-      if (hasMcpConfig) {
-        configuredTools.push(agentConfig.name);
-        console.log(`\x1b[32m✓ ${agentConfig.name}\x1b[0m`);
-        if (options.verbose) {
-          console.log(`   Config file: ${configPath}`);
-          const mcpConfig = agentKey === 'vscode'
-            ? json['mcp.servers']['ai-skills-hub']
-            : json.mcpServers['ai-skills-hub'];
-          if (mcpConfig.command) {
-            console.log(`   Command: ${mcpConfig.command} ${mcpConfig.args?.join(' ') || ''}`);
+      // Special handling for TOML format (Codex)
+      if (agentKey === 'codex' && configPath.endsWith('.toml')) {
+        // Check if TOML file contains [mcp_servers.ai-skills-hub] section
+        hasMcpConfig = checkTomlMcpConfig(content);
+        
+        if (hasMcpConfig) {
+          configuredTools.push(agentConfig.name);
+          console.log(`\x1b[32m✓ ${agentConfig.name}\x1b[0m`);
+          if (options.verbose) {
+            console.log(`   Config file: ${configPath}`);
+            const mcpConfig = parseTomlMcpConfig(content);
+            if (mcpConfig?.command) {
+              console.log(`   Command: ${mcpConfig.command} ${mcpConfig.args?.join(' ') || ''}`);
+            }
+          }
+        } else {
+          notConfiguredTools.push(agentConfig.name);
+          console.log(`\x1b[33m○ ${agentConfig.name} (installed but MCP not configured)\x1b[0m`);
+          if (options.verbose) {
+            console.log(`   Config file: ${configPath}`);
           }
         }
       } else {
-        notConfiguredTools.push(agentConfig.name);
-        console.log(`\x1b[33m○ ${agentConfig.name} (installed but MCP not configured)\x1b[0m`);
-        if (options.verbose) {
-          console.log(`   Config file: ${configPath}`);
+        // JSON format handling
+        const json = JSON.parse(content);
+        
+        // VS Code uses 'mcp.servers' format, other tools use 'mcpServers'
+        hasMcpConfig = agentKey === 'vscode'
+          ? (json['mcp.servers'] && json['mcp.servers']['ai-skills-hub'])
+          : (json.mcpServers && json.mcpServers['ai-skills-hub']);
+        
+        if (hasMcpConfig) {
+          configuredTools.push(agentConfig.name);
+          console.log(`\x1b[32m✓ ${agentConfig.name}\x1b[0m`);
+          if (options.verbose) {
+            console.log(`   Config file: ${configPath}`);
+            const mcpConfig = agentKey === 'vscode'
+              ? json['mcp.servers']['ai-skills-hub']
+              : json.mcpServers['ai-skills-hub'];
+            if (mcpConfig.command) {
+              console.log(`   Command: ${mcpConfig.command} ${mcpConfig.args?.join(' ') || ''}`);
+            }
+          }
+        } else {
+          notConfiguredTools.push(agentConfig.name);
+          console.log(`\x1b[33m○ ${agentConfig.name} (installed but MCP not configured)\x1b[0m`);
+          if (options.verbose) {
+            console.log(`   Config file: ${configPath}`);
+          }
         }
       }
     } catch {
@@ -231,7 +258,7 @@ function getConfigPath(os: string, tool: string): string | null {
   const pathMap: Record<string, Record<string, string>> = {
     macos: {
       cursor: `${homeDir}/.cursor/mcp.json`,
-      codex: `${homeDir}/.codex/config.json`,
+      codex: `${homeDir}/.codex/config.toml`,
       copilot: `${homeDir}/.config/github-copilot/config.json`,
       gemini: `${homeDir}/.config/gemini/config.json`,
       'claude-code': `${homeDir}/.claude.json`,
@@ -240,7 +267,7 @@ function getConfigPath(os: string, tool: string): string | null {
     },
     linux: {
       cursor: `${homeDir}/.config/cursor/mcp.json`,
-      codex: `${homeDir}/.config/codex/config.json`,
+      codex: `${homeDir}/.codex/config.toml`,
       copilot: `${homeDir}/.config/github-copilot/config.json`,
       gemini: `${homeDir}/.config/gemini/config.json`,
       'claude-code': `${homeDir}/.claude.json`,
@@ -249,7 +276,7 @@ function getConfigPath(os: string, tool: string): string | null {
     },
     windows: {
       cursor: `${appData}/Cursor/User/mcp.json`,
-      codex: `${appData}/codex/config.json`,
+      codex: `${appData}/codex/config.toml`,
       copilot: `${appData}/github-copilot/config.json`,
       gemini: `${appData}/gemini/config.json`,
       'claude-code': `${homeDir}/.claude.json`,
@@ -486,4 +513,53 @@ function getAIToolsMap(): Map<string, AITool> {
       }
     ]
   ]);
+}
+
+/**
+ * Check if TOML content contains [mcp_servers.ai-skills-hub] configuration
+ */
+function checkTomlMcpConfig(content: string): boolean {
+  // Look for [mcp_servers.ai-skills-hub] section in TOML
+  const sectionRegex = /^\[mcp_servers\.ai-skills-hub\]/m;
+  return sectionRegex.test(content);
+}
+
+/**
+ * Parse TOML MCP configuration to extract command details
+ * Returns null if configuration not found or malformed
+ */
+function parseTomlMcpConfig(content: string): { command?: string; args?: string[] } | null {
+  try {
+    // Find the [mcp_servers.ai-skills-hub] section
+    const sectionRegex = /^\[mcp_servers\.ai-skills-hub\]([\s\S]*?)(?=^\[|$)/m;
+    const match = content.match(sectionRegex);
+    
+    if (!match) {
+      return null;
+    }
+    
+    const section = match[1];
+    const config: { command?: string; args?: string[] } = {};
+    
+    // Extract command
+    const commandMatch = section.match(/^command\s*=\s*"([^"]+)"/m);
+    if (commandMatch) {
+      config.command = commandMatch[1];
+    }
+    
+    // Extract args array
+    const argsMatch = section.match(/^args\s*=\s*\[([\s\S]*?)\]/m);
+    if (argsMatch) {
+      const argsContent = argsMatch[1];
+      // Parse array of quoted strings
+      const argMatches = argsContent.match(/"([^"]+)"/g);
+      if (argMatches) {
+        config.args = argMatches.map(arg => arg.replace(/"/g, ''));
+      }
+    }
+    
+    return config;
+  } catch {
+    return null;
+  }
 }
