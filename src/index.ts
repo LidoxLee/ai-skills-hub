@@ -75,13 +75,13 @@ class SkillsHubServer {
       // Add tool for executing scripts in a skill directory
       tools.push({
         name: 'execute_skill_script',
-        description: 'Execute a shell script from a skill directory. This allows running automated tasks, tests, or other scripts defined in the skill.',
+        description: 'Use this tool to execute executable scripts mentioned in SKILL.md, e.g., `scripts/some_script.sh`, using the script\'s relative path as the execution parameter.',
         inputSchema: {
           type: 'object',
           properties: {
             skill_name: {
               type: 'string',
-              description: 'The name of the skill directory (e.g., "go-testing")',
+              description: 'The name of the skill directory (e.g., "go-testing/SKILL.md", use "go-testing" as the value. "api_design/SKILL.md", use "api_design" as the value.)',
             },
             script_path: {
               type: 'string',
