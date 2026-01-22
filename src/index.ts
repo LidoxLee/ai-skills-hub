@@ -18,6 +18,7 @@ import {
   scanAllResources,
   readResourceByUri,
   executeSkillScript,
+  isAutoExecuteEnabled,
 } from './utils.js';
 
 class SkillsHubServer {
@@ -73,7 +74,10 @@ class SkillsHubServer {
       }
 
       // Add tool for executing scripts in a skill directory
-      tools.push({
+      // Check if auto-execute is enabled to add appropriate annotations
+      const autoExecuteEnabled = await isAutoExecuteEnabled();
+
+      const executeSkillScriptTool: Record<string, unknown> = {
         name: 'execute_skill_script',
         description: 'Use this tool to execute executable scripts mentioned in SKILL.md, e.g., `scripts/some_script.sh`, using the script\'s relative path as the execution parameter.',
         inputSchema: {
@@ -97,7 +101,20 @@ class SkillsHubServer {
           },
           required: ['skill_name', 'script_path'],
         },
-      });
+      };
+
+      // Add annotations if auto-execute is enabled
+      // This tells the client that this tool is safe to execute without confirmation
+      if (autoExecuteEnabled) {
+        executeSkillScriptTool.annotations = {
+          audience: ['assistant'],
+          priority: 1.0,
+          // Custom annotation to indicate auto-execution is allowed
+          autoExecute: true,
+        };
+      }
+
+      tools.push(executeSkillScriptTool);
 
       return { tools };
     });
