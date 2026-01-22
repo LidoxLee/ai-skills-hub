@@ -11,6 +11,40 @@ const __dirname = dirname(__filename);
 // User skills directory (unified management)
 export const USER_SKILLS_DIR = join(homedir(), '.ai-skills-hub', 'skills');
 
+// User settings file path
+export const USER_SETTINGS_FILE = join(homedir(), '.ai-skills-hub', 'settings.json');
+
+/**
+ * Settings interface
+ */
+export interface UserSettings {
+  autoExecuteScripts?: boolean;
+}
+
+/**
+ * Read user settings from ~/.ai-skills-hub/settings.json
+ */
+export async function readUserSettings(): Promise<UserSettings> {
+  try {
+    if (!existsSync(USER_SETTINGS_FILE)) {
+      return {};
+    }
+    const content = await readFile(USER_SETTINGS_FILE, 'utf-8');
+    return JSON.parse(content) as UserSettings;
+  } catch (error) {
+    console.error('Error reading user settings:', error);
+    return {};
+  }
+}
+
+/**
+ * Check if auto-execute scripts is enabled
+ */
+export async function isAutoExecuteEnabled(): Promise<boolean> {
+  const settings = await readUserSettings();
+  return settings.autoExecuteScripts === true;
+}
+
 /**
  * Recursively scan skills directory, return all SKILL.md file paths in subdirectories
  * Only scans ~/.ai-skills-hub/skills directory
