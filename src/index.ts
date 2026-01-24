@@ -17,9 +17,9 @@ import {
   readSkillResourcesIndex,
   scanAllResources,
   readResourceByUri,
-  executeSkillScript,
-  isAutoExecuteEnabled,
+  USER_SKILLS_DIR,
 } from './utils.js';
+import { join, basename, dirname } from 'path';
 
 class SkillsHubServer {
   private server: Server;
@@ -73,92 +73,12 @@ class SkillsHubServer {
         }
       }
 
-      // Add tool for executing scripts in a skill directory
-      // Check if auto-execute is enabled to add appropriate annotations
-      const autoExecuteEnabled = await isAutoExecuteEnabled();
-
-      const executeSkillScriptTool: Record<string, unknown> = {
-        name: 'execute_skill_script',
-        description: 'Use this tool to execute executable scripts mentioned in SKILL.md, e.g., `scripts/some_script.sh`, using the script\'s relative path as the execution parameter.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            skill_name: {
-              type: 'string',
-              description: 'The name of the skill directory (e.g., "go-testing/SKILL.md", use "go-testing" as the value. "api_design/SKILL.md", use "api_design" as the value.)',
-            },
-            script_path: {
-              type: 'string',
-              description: 'The relative path to the script within the skill directory (e.g., "scripts/test.sh")',
-            },
-            args: {
-              type: 'array',
-              items: {
-                type: 'string',
-              },
-              description: 'Optional arguments to pass to the script',
-            },
-          },
-          required: ['skill_name', 'script_path'],
-        },
-      };
-
-      // Add annotations if auto-execute is enabled
-      // This tells the client that this tool is safe to execute without confirmation
-      if (autoExecuteEnabled) {
-        executeSkillScriptTool.annotations = {
-          audience: ['assistant'],
-          priority: 1.0,
-          // Custom annotation to indicate auto-execution is allowed
-          autoExecute: true,
-        };
-      }
-
-      tools.push(executeSkillScriptTool);
-
       return { tools };
     });
 
     // Handle call_tool request
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const { name, arguments: args } = request.params;
-
-      // Handle execute_skill_script tool
-      if (name === 'execute_skill_script') {
-        const { skill_name, script_path, args: scriptArgs = [] } = args as {
-          skill_name: string;
-          script_path: string;
-          args?: string[];
-        };
-        
-        try {
-          const result = await executeSkillScript(skill_name, script_path, scriptArgs);
-          
-          let output = `Script executed: ${script_path}\n`;
-          output += `Exit code: ${result.exitCode}\n\n`;
-          
-          if (result.stdout) {
-            output += `STDOUT:\n${result.stdout}\n\n`;
-          }
-          
-          if (result.stderr) {
-            output += `STDERR:\n${result.stderr}\n`;
-          }
-          
-          return {
-            content: [
-              {
-                type: 'text' as const,
-                text: output,
-              },
-            ],
-          };
-        } catch (error) {
-          throw new Error(
-            `Failed to execute script: ${error instanceof Error ? error.message : String(error)}`
-          );
-        }
-      }
+      const { name } = request.params;
 
       // Handle regular skill tools
       const filename = await toolNameToFilename(name);
@@ -173,8 +93,18 @@ class SkillsHubServer {
         // Read resources directory index information (only includes filename and description, not full content)
         const resourcesIndex = await readSkillResourcesIndex(filename);
         
-        // Combine content: first SKILL.md, then resources index
-        let combinedContent = content;
+        // Extract skill name and directory path
+        const skillPath = dirname(filename);
+        const skillName = basename(skillPath);
+        const skillDir = join(USER_SKILLS_DIR, skillPath);
+        
+        // Add execution context at the beginning
+        let combinedContent = `---\n**Execution Context for this Skill**\n`;
+        combinedContent += `- Skill Name: ${skillName}\n`;
+        combinedContent += `- Skill Directory: ${skillDir}\n`;
+        combinedContent += `- Note: When executing scripts or commands mentioned in this skill, use the Shell tool with working_directory set to the skill directory above.\n`;
+        combinedContent += `---\n\n`;
+        combinedContent += content;
         
         // If there are resource files, add index list (without full content to save tokens)
         if (resourcesIndex.length > 0) {

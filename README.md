@@ -285,9 +285,9 @@ More content...
 - The first heading will automatically be used as the tool description
 - Supports all standard Markdown syntax (headings, lists, code blocks, etc.)
 
-### Executing Shell Scripts from Skills
+### Including Executable Scripts in Skills
 
-**New Feature!** Skills can now include executable shell scripts that AI agents can run.
+Skills can include executable scripts (shell scripts, Python scripts, etc.) that AI agents can run using standard Shell tools.
 
 **Directory Structure:**
 ```
@@ -296,33 +296,58 @@ More content...
     ├── SKILL.md
     ├── scripts/
     │   ├── setup.sh
-    │   └── test.sh
+    │   ├── test.py
+    │   └── validate.sh
     └── resources/
 ```
 
-**Available Tool:**
-- `execute_skill_script` - Execute a specific script from a skill directory
+**Execution Context:**
+
+When AI calls a skill tool, it automatically receives execution context information:
+- **Skill Name**: The name of the skill
+- **Skill Directory**: The absolute path to the skill directory (e.g., `/Users/username/.ai-skills-hub/skills/your-skill`)
+- **Usage Instructions**: Guidance to use the Shell tool with the provided working directory
 
 **How to Guide AI to Execute Scripts in SKILL.md:**
 ```markdown
 # My Skill
 
-When working with this skill, please:
-1. Execute `scripts/setup.sh` to prepare the environment
-2. Run `scripts/test.sh` to validate the implementation
+When working with this skill, follow these steps:
+
+## Setup
+
+Run the setup script to prepare the environment:
+```bash
+bash scripts/setup.sh
+```
+
+## Testing
+
+Validate the implementation using:
+```bash
+bash scripts/test.sh --verbose
+```
+
+Or use the Python validation script:
+```bash
+python3 scripts/validate.py
+```
 
 ## Available Scripts
 
-### setup.sh
-Prepares the development environment.
-Execute: `scripts/setup.sh`
-
-### test.sh
-Validates the implementation.
-Execute: `scripts/test.sh`
+- **setup.sh** - Prepares the development environment
+- **test.sh** - Runs unit tests with coverage reporting
+- **validate.py** - Validates code quality and standards
 
 ...
 ```
+
+**How It Works:**
+
+1. AI receives the skill content with execution context
+2. AI sees the script paths and commands in SKILL.md
+3. AI uses the Shell tool with `working_directory` set to the skill directory
+4. Scripts execute in the correct directory context automatically
 
 
 ### Using MCP Skills in Cursor Agent
@@ -374,7 +399,7 @@ The server will communicate with MCP clients through standard input/output.
 
    - **List tools (list_tools):** Scans the `~/.ai-skills-hub/skills/` directory and converts each skill directory into a tool name for the AI (e.g., `api-design/` → `api_design`).
 
-   - **Pass content (call_tool):** When the AI requests it, reads the corresponding `SKILL.md` content from `~/.ai-skills-hub/skills/` and feeds it to the AI as "background knowledge".
+   - **Pass content with context (call_tool):** When the AI requests it, reads the corresponding `SKILL.md` content from `~/.ai-skills-hub/skills/` and provides it to the AI along with execution context information (skill name, absolute directory path, and usage instructions for executing scripts).
 
 3. **CLI Tool (skillshub)**
    This CLI tool helps manage skills and AI tool configurations:

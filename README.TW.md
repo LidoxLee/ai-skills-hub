@@ -280,9 +280,9 @@ export ANTHROPIC_API_KEY="your-api-key"
 - 第一個標題將自動用作工具說明
 - 支援所有標準 Markdown 語法（標題、列表、程式碼區塊等）
 
-### 從技能中執行 Shell Script
+### 在技能中包含可執行腳本
 
-**新功能！** 技能現在可以包含可執行的 shell script，AI agent 可以運行這些腳本。
+技能可以包含可執行腳本（shell 腳本、Python 腳本等），AI agent 可以使用標準的 Shell 工具來執行它們。
 
 **目錄結構：**
 ```
@@ -291,33 +291,58 @@ export ANTHROPIC_API_KEY="your-api-key"
     ├── SKILL.md
     ├── scripts/
     │   ├── setup.sh
-    │   └── test.sh
+    │   ├── test.py
+    │   └── validate.sh
     └── resources/
 ```
 
-**可用工具：**
-- `execute_skill_script` - 執行技能目錄中的特定腳本
+**執行上下文：**
+
+當 AI 呼叫技能工具時，會自動收到執行上下文資訊：
+- **技能名稱**：技能的名稱
+- **技能目錄**：技能目錄的絕對路徑（例如：`/Users/username/.ai-skills-hub/skills/your-skill`）
+- **使用指示**：指導 AI 使用提供的工作目錄來執行 Shell 工具
 
 **如何在 SKILL.md 中引導 AI 執行腳本：**
 ```markdown
 # 我的技能
 
-使用此技能時，請：
-1. 執行 `scripts/setup.sh` 來準備環境
-2. 執行 `scripts/test.sh` 來驗證實作
+使用此技能時，請遵循以下步驟：
+
+## 設定
+
+執行設定腳本來準備環境：
+```bash
+bash scripts/setup.sh
+```
+
+## 測試
+
+使用以下命令驗證實作：
+```bash
+bash scripts/test.sh --verbose
+```
+
+或使用 Python 驗證腳本：
+```bash
+python3 scripts/validate.py
+```
 
 ## 可用腳本
 
-### setup.sh
-準備開發環境。
-執行：`scripts/setup.sh`
-
-### test.sh
-驗證實作結果。
-執行：`scripts/test.sh`
+- **setup.sh** - 準備開發環境
+- **test.sh** - 執行單元測試並產生覆蓋率報告
+- **validate.py** - 驗證程式碼品質和標準
 
 ...
 ```
+
+**運作方式：**
+
+1. AI 收到包含執行上下文的技能內容
+2. AI 看到 SKILL.md 中的腳本路徑和命令
+3. AI 使用 Shell 工具並將 `working_directory` 設定為技能目錄
+4. 腳本會自動在正確的目錄上下文中執行
 
 ### 在 Cursor Agent 中使用 MCP 技能
 
@@ -368,7 +393,7 @@ npm start
 
    - **列出工具 (list_tools)：** 掃描 `~/.ai-skills-hub/skills/` 目錄，並將每個技能目錄轉換為 AI 的工具名稱（例如：`api-design/` → `api_design`）。
 
-   - **傳遞內容 (call_tool)：** 當 AI 請求時，從 `~/.ai-skills-hub/skills/` 讀取對應的 `SKILL.md` 內容，並將其作為「背景知識」提供給 AI。
+   - **傳遞內容與上下文 (call_tool)：** 當 AI 請求時，從 `~/.ai-skills-hub/skills/` 讀取對應的 `SKILL.md` 內容，並連同執行上下文資訊（技能名稱、絕對目錄路徑和執行腳本的使用說明）一起提供給 AI。
 
 3. **CLI 工具 (skillshub)**
    此 CLI 工具協助管理技能和 AI 工具配置：
