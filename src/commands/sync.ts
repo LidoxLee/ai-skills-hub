@@ -120,7 +120,7 @@ export async function syncCommand(options: SyncOptions) {
     await configureCursor(os, mcpConfig);
     await configureVSCode(os, mcpConfig);
     await configureCodex(os, mcpConfig);
-    await configureCopilot(os);
+    await configureCopilot(os, mcpConfig);
     await configureGemini(os);
     await configureClaudeCode(os, mcpConfig);
 
@@ -360,23 +360,55 @@ async function configureCodex(os: string, mcpConfig: any): Promise<void> {
   }
 }
 
-async function configureCopilot(os: string): Promise<void> {
-  console.log('\n\x1b[33mConfiguring GitHub Copilot...\x1b[0m');
-  try {
-    execSync('which copilot', { stdio: 'ignore' });
-    const configPath = getConfigPath(os, 'copilot');
-    if (configPath) {
-      mkdirSync(dirname(configPath), { recursive: true });
-      if (!existsSync(configPath)) {
-        writeFileSync(configPath, '{}', 'utf-8');
-      }
-      console.log(`\x1b[32mCopilot config file location: ${configPath}\x1b[0m`);
-      console.log('\x1b[33mPlease manually check if Copilot supports MCP configuration\x1b[0m');
-    }
-  } catch {
-    console.log('\x1b[33mCopilot CLI not installed, skipping configuration\x1b[0m');
-    console.log('Install command: brew install copilot-cli or npm install -g @github/copilot-cli');
+async function configureCopilot(os: string, mcpConfig: any): Promise<void> {
+  console.log('\n\x1b[33mConfiguring GitHub Copilot (VS Code Extension)...\x1b[0m');
+
+  // GitHub Copilot uses VS Code's settings.json for MCP configuration
+  // The mcp.servers setting in VS Code settings.json is shared by both VS Code and Copilot
+  const configPath = getConfigPath(os, 'vscode');
+
+  if (!configPath) {
+    console.log('\x1b[33mUnable to determine VS Code settings path\x1b[0m');
+    return;
   }
+
+  const configDir = dirname(configPath);
+  if (!existsSync(configDir)) {
+    console.log('\x1b[33mVS Code not installed, skipping Copilot configuration\x1b[0m');
+    console.log('Tip: Install VS Code and GitHub Copilot extension to use MCP with Copilot');
+    return;
+  }
+
+  // Check if VS Code settings already has mcp.servers configured
+  if (existsSync(configPath)) {
+    try {
+      const content = readFileSync(configPath, 'utf-8');
+      const settings = JSON.parse(content);
+      if (settings['mcp.servers']?.['ai-skills-hub']) {
+        console.log('\x1b[32m✓ Copilot MCP already configured via VS Code settings.json\x1b[0m');
+        console.log(`  Config path: ${configPath}`);
+        return;
+      }
+    } catch {
+      // Continue to configure if we can't read existing settings
+    }
+  }
+
+  // Configure MCP for Copilot (same format as VS Code)
+  const mcpServerPath = mcpConfig.mcpServers['ai-skills-hub'].args[0];
+  const vscodeConfig = {
+    servers: {
+      'ai-skills-hub': {
+        type: 'stdio',
+        command: 'node',
+        args: [mcpServerPath]
+      }
+    },
+    inputs: []
+  };
+
+  updateVSCodeConfig(configPath, vscodeConfig);
+  console.log('\x1b[32m✓ Copilot MCP configured via VS Code settings.json\x1b[0m');
 }
 
 async function configureGemini(os: string): Promise<void> {
