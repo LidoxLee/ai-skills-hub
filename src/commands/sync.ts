@@ -152,29 +152,32 @@ function detectOS(): string {
 
 function getConfigPath(os: string, tool: string): string | null {
   const homeDir = process.env.HOME || process.env.USERPROFILE || '';
-  
+
   const paths: Record<string, Record<string, string>> = {
     macos: {
       'cursor': `${homeDir}/.cursor/mcp.json`,
       'vscode': `${homeDir}/Library/Application Support/Code/User/settings.json`,
+      'vscode-mcp': `${homeDir}/Library/Application Support/Code/User/mcp.json`,
       'codex': `${homeDir}/.codex/config.toml`,
-      'copilot': `${homeDir}/.config/github-copilot/config.json`,
+      'copilot': `${homeDir}/Library/Application Support/Code/User/mcp.json`,
       'gemini': `${homeDir}/.config/gemini/config.json`,
       'claude-code': `${homeDir}/.claude.json`
     },
     linux: {
       'cursor': `${homeDir}/.config/cursor/mcp.json`,
       'vscode': `${homeDir}/.config/Code/User/settings.json`,
+      'vscode-mcp': `${homeDir}/.config/Code/User/mcp.json`,
       'codex': `${homeDir}/.codex/config.toml`,
-      'copilot': `${homeDir}/.config/github-copilot/config.json`,
+      'copilot': `${homeDir}/.config/Code/User/mcp.json`,
       'gemini': `${homeDir}/.config/gemini/config.json`,
       'claude-code': `${homeDir}/.claude.json`
     },
     windows: {
       'cursor': `${process.env.APPDATA}/Cursor/User/mcp.json`,
       'vscode': `${process.env.APPDATA}/Code/User/settings.json`,
+      'vscode-mcp': `${process.env.APPDATA}/Code/User/mcp.json`,
       'codex': `${process.env.APPDATA}/codex/config.toml`,
-      'copilot': `${process.env.APPDATA}/github-copilot/config.json`,
+      'copilot': `${process.env.APPDATA}/Code/User/mcp.json`,
       'gemini': `${process.env.APPDATA}/gemini/config.json`,
       'claude-code': `${process.env.APPDATA}/.claude.json`
     }
@@ -247,6 +250,42 @@ function updateVSCodeConfig(configPath: string, vscodeConfig: any): void {
   console.log(`\x1b[32mUpdated: ${configPath}\x1b[0m`);
 }
 
+// Update VS Code mcp.json file (used by VS Code MCP and GitHub Copilot)
+function updateVSCodeMcpJson(configPath: string, mcpConfig: any): void {
+  const configDir = dirname(configPath);
+  mkdirSync(configDir, { recursive: true });
+
+  backupConfig(configPath);
+
+  let existingConfig: any = { inputs: [], servers: {} };
+  if (existsSync(configPath)) {
+    try {
+      const content = readFileSync(configPath, 'utf-8');
+      if (content.trim()) {
+        existingConfig = JSON.parse(content);
+      }
+    } catch (error) {
+      console.log(`\x1b[33mWarning: Unable to read existing config, will create new config\x1b[0m`);
+    }
+  }
+
+  // Ensure proper structure
+  if (!existingConfig.inputs) existingConfig.inputs = [];
+  if (!existingConfig.servers) existingConfig.servers = {};
+
+  // Merge servers configuration
+  const mergedConfig = {
+    inputs: existingConfig.inputs,
+    servers: {
+      ...existingConfig.servers,
+      ...mcpConfig.servers
+    }
+  };
+
+  writeFileSync(configPath, JSON.stringify(mergedConfig, null, 2), 'utf-8');
+  console.log(`\x1b[32mUpdated: ${configPath}\x1b[0m`);
+}
+
 function updateTomlConfig(configPath: string, mcpServerPath: string): void {
   const configDir = dirname(configPath);
   mkdirSync(configDir, { recursive: true });
@@ -269,10 +308,11 @@ function updateTomlConfig(configPath: string, mcpServerPath: string): void {
   if (sectionRegex.test(existingContent)) {
     // Section exists, update it
     console.log('\x1b[33mExisting MCP configuration found, updating...\x1b[0m');
-    
-    // Replace the entire [mcp_servers.ai-skills-hub] section
-    const replacementRegex = /^\[mcp_servers\.ai-skills-hub\][\s\S]*?(?=^\[|$)/m;
-    const newSection = generateTomlMcpSection(mcpServerPath);
+
+    // Replace the entire [mcp_servers.ai-skills-hub] section including trailing newlines
+    // Match from [mcp_servers.ai-skills-hub] until next section header (line starting with [) or end of file
+    const replacementRegex = /\[mcp_servers\.ai-skills-hub\][\s\S]*?(?=\n\[|\n*$)/;
+    const newSection = generateTomlMcpSection(mcpServerPath).trimEnd();
     updatedContent = existingContent.replace(replacementRegex, newSection);
   } else {
     // Section doesn't exist, append it
@@ -312,17 +352,18 @@ async function configureCursor(os: string, mcpConfig: any): Promise<void> {
 
 async function configureVSCode(os: string, mcpConfig: any): Promise<void> {
   console.log('\n\x1b[33mConfiguring VS Code...\x1b[0m');
-  const configPath = getConfigPath(os, 'vscode');
-  if (configPath) {
+  const settingsPath = getConfigPath(os, 'vscode');
+  const mcpJsonPath = getConfigPath(os, 'vscode-mcp');
+
+  if (settingsPath) {
     try {
       // Check if VS Code is installed by checking if settings.json directory exists
-      const configDir = dirname(configPath);
+      const configDir = dirname(settingsPath);
       if (!existsSync(configDir)) {
         console.log('\x1b[33mVS Code not installed or settings directory not found, skipping configuration\x1b[0m');
         return;
       }
-      
-      // VS Code uses a different MCP config format
+
       const mcpServerPath = mcpConfig.mcpServers['ai-skills-hub'].args[0];
       const vscodeConfig = {
         servers: {
@@ -334,8 +375,23 @@ async function configureVSCode(os: string, mcpConfig: any): Promise<void> {
         },
         inputs: []
       };
-      
-      updateVSCodeConfig(configPath, vscodeConfig);
+
+      // Update settings.json with mcp.servers format
+      updateVSCodeConfig(settingsPath, vscodeConfig);
+
+      // Also update mcp.json with the native MCP format (for better compatibility)
+      if (mcpJsonPath) {
+        const mcpJsonConfig = {
+          servers: {
+            'ai-skills-hub': {
+              type: 'stdio',
+              command: 'node',
+              args: [mcpServerPath]
+            }
+          }
+        };
+        updateVSCodeMcpJson(mcpJsonPath, mcpJsonConfig);
+      }
     } catch (error) {
       console.log('\x1b[33mFailed to configure VS Code, skipping\x1b[0m');
       if (error instanceof Error) {
@@ -363,12 +419,12 @@ async function configureCodex(os: string, mcpConfig: any): Promise<void> {
 async function configureCopilot(os: string, mcpConfig: any): Promise<void> {
   console.log('\n\x1b[33mConfiguring GitHub Copilot (VS Code Extension)...\x1b[0m');
 
-  // GitHub Copilot uses VS Code's settings.json for MCP configuration
-  // The mcp.servers setting in VS Code settings.json is shared by both VS Code and Copilot
-  const configPath = getConfigPath(os, 'vscode');
+  // GitHub Copilot uses VS Code's mcp.json for MCP configuration
+  // This is a separate file from settings.json with format: { inputs: [], servers: {} }
+  const configPath = getConfigPath(os, 'copilot');
 
   if (!configPath) {
-    console.log('\x1b[33mUnable to determine VS Code settings path\x1b[0m');
+    console.log('\x1b[33mUnable to determine VS Code mcp.json path\x1b[0m');
     return;
   }
 
@@ -379,36 +435,21 @@ async function configureCopilot(os: string, mcpConfig: any): Promise<void> {
     return;
   }
 
-  // Check if VS Code settings already has mcp.servers configured
-  if (existsSync(configPath)) {
-    try {
-      const content = readFileSync(configPath, 'utf-8');
-      const settings = JSON.parse(content);
-      if (settings['mcp.servers']?.['ai-skills-hub']) {
-        console.log('\x1b[32m✓ Copilot MCP already configured via VS Code settings.json\x1b[0m');
-        console.log(`  Config path: ${configPath}`);
-        return;
-      }
-    } catch {
-      // Continue to configure if we can't read existing settings
-    }
-  }
-
-  // Configure MCP for Copilot (same format as VS Code)
+  // Configure MCP for Copilot using mcp.json format
   const mcpServerPath = mcpConfig.mcpServers['ai-skills-hub'].args[0];
-  const vscodeConfig = {
+  const mcpJsonConfig = {
     servers: {
       'ai-skills-hub': {
         type: 'stdio',
         command: 'node',
         args: [mcpServerPath]
       }
-    },
-    inputs: []
+    }
   };
 
-  updateVSCodeConfig(configPath, vscodeConfig);
-  console.log('\x1b[32m✓ Copilot MCP configured via VS Code settings.json\x1b[0m');
+  updateVSCodeMcpJson(configPath, mcpJsonConfig);
+  console.log('\x1b[32m✓ Copilot MCP configured via VS Code mcp.json\x1b[0m');
+  console.log(`  Config path: ${configPath}`);
 }
 
 async function configureGemini(os: string): Promise<void> {
