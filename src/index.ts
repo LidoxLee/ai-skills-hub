@@ -14,6 +14,8 @@ import {
   toolNameToFilename,
   readSkillFile,
   getSkillDescription,
+  getSkillTrigger,
+  getSkillProvides,
   readSkillResourcesIndex,
   scanAllResources,
   readResourceByUri,
@@ -57,11 +59,18 @@ class SkillsHubServer {
         try {
           const content = await readSkillFile(filename);
           const description = getSkillDescription(content, filename);
+          const trigger = getSkillTrigger(content);
+          const provides = getSkillProvides(content);
           const toolName = filenameToToolName(filename);
+          const parts: string[] = [];
+          if (trigger) parts.push(`[Trigger]: ${trigger}`);
+          if (provides) parts.push(`[Provides]: ${provides}`);
+          parts.push(`[Description]: ${description}`);
+          const fullDescription = parts.join('\n');
 
           tools.push({
             name: toolName,
-            description: description,
+            description: fullDescription,
             inputSchema: {
               type: 'object',
               properties: {},
