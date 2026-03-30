@@ -370,6 +370,33 @@ export function getSkillDescription(content: string, filepath: string): string {
 }
 
 /**
+ * Extract trigger conditions from SKILL.md frontmatter
+ * Returns null if no trigger field is found
+ */
+export function getSkillTrigger(content: string): string | null {
+  const lines = content.split('\n');
+  const firstNonEmptyLineIdx = lines.findIndex(line => line.trim());
+
+  if (firstNonEmptyLineIdx >= 0 && lines[firstNonEmptyLineIdx].trim() === '---') {
+    for (let i = firstNonEmptyLineIdx + 1; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line === '---') break;
+
+      const triggerMatch = line.match(/^trigger:\s*(.+)$/i);
+      if (triggerMatch) {
+        let trigger = triggerMatch[1].trim();
+        if ((trigger.startsWith('"') && trigger.endsWith('"')) ||
+            (trigger.startsWith("'") && trigger.endsWith("'"))) {
+          trigger = trigger.slice(1, -1);
+        }
+        return trigger;
+      }
+    }
+  }
+  return null;
+}
+
+/**
  * Execute a shell script in a skill directory
  * @param skillName - The name of the skill (e.g., 'go-testing')
  * @param scriptPath - The relative path to the script within the skill directory (e.g., 'scripts/test.sh')
